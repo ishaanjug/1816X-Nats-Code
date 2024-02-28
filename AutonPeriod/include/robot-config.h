@@ -10,10 +10,14 @@ extern motor R1;
 extern motor R2;
 extern motor R3;
 extern inertial Inertial;
-extern motor Intake;
 extern controller Controller1;
-extern digital_out BackWings;
 extern motor_group Hang;
+extern digital_out BackLeft;
+extern motor Intake;
+extern digital_out BackRight;
+extern digital_out FrontWings;
+extern digital_out PTO;
+extern digital_out Ratchet;
 
 /**
  * Used to initialize code/tasks/devices added using tools in VEXcode Pro.

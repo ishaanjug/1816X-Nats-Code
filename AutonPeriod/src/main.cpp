@@ -3,17 +3,21 @@
 // ---- START VEXCODE CONFIGURED DEVICES ----
 // Robot Configuration:
 // [Name]               [Type]        [Port(s)]
-// L1                   motor         13              
-// L2                   motor         16              
-// L3                   motor         9               
-// R1                   motor         14              
-// R2                   motor         10              
-// R3                   motor         5               
-// Inertial             inertial      12              
-// Intake               motor         11              
+// L1                   motor         11              
+// L2                   motor         12              
+// L3                   motor         13              
+// R1                   motor         20              
+// R2                   motor         19              
+// R3                   motor         18              
+// Inertial             inertial      17              
 // Controller1          controller                    
-// BackWings            digital_out   A               
-// Hang                 motor_group   15, 17          
+// Hang                 motor_group   14, 9           
+// BackLeft             digital_out   F               
+// Intake               motor         16              
+// BackRight            digital_out   G               
+// FrontWings           digital_out   E               
+// PTO                  digital_out   B               
+// Ratchet              digital_out   C               
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 using namespace vex;
@@ -54,7 +58,7 @@ motor_group(L1, L2, L3),
 motor_group(R1, R2, R3),
 
 //Specify the PORT NUMBER of your inertial sensor, in PORT format (i.e. "PORT1", not simply "1"):
-PORT12,
+PORT17,
 
 //Input your wheel diameter. (4" omnis are actually closer to 4.125"):
 2.75,
@@ -110,6 +114,8 @@ PORT3,     -PORT4,
 );
 
 int current_auton_selection = 0;
+int front_wings_open = 0;
+int back_wings_open = 0;
 bool auto_started = false;
 
 void pre_auton(void) {
@@ -121,34 +127,25 @@ void pre_auton(void) {
     Brain.Screen.clearScreen();            //brain screen for auton selection.
     switch(current_auton_selection){       //Tap the brain screen to cycle through autons.
       case 0:
-        Brain.Screen.printAt(50, 50, "DEFENSIVE SIDE AUTON 1");
+        Brain.Screen.printAt(50, 50, "10 POINT AWP");
         break;
       case 1:
-        Brain.Screen.printAt(50, 50, "DEFENSIVE SIDE AUTON 1");
+        Brain.Screen.printAt(50, 50, "10 POINT AWP");
         break;
       case 2:
-        Brain.Screen.printAt(50, 50, "DEFENSIVE SIDE AUTON 2");
+        Brain.Screen.printAt(50, 50, "CONSISTENT AWP");
         break;
       case 3:
-        Brain.Screen.printAt(50, 50, "Swing Test");
+        Brain.Screen.printAt(50, 50, "6 BALL WHITE");
         break;
       case 4:
-        Brain.Screen.printAt(50, 50, "Full Test");
-        break;
-      case 5:
-        Brain.Screen.printAt(50, 50, "Odom Test");
-        break;
-      case 6:
-        Brain.Screen.printAt(50, 50, "Tank Odom Test");
-        break;
-      case 7:
-        Brain.Screen.printAt(50, 50, "Holonomic Odom Test");
+        Brain.Screen.printAt(50, 50, "6 BALL BLACK");
         break;
     }
     if(Brain.Screen.pressing()){
       while(Brain.Screen.pressing()) {}
       current_auton_selection ++;
-    } else if (current_auton_selection == 8){
+    } else if (current_auton_selection == 5){
       current_auton_selection = 0;
     }
     task::sleep(10);
@@ -159,7 +156,7 @@ void autonomous(void) {
   auto_started = true;
   switch(current_auton_selection){  
     case 0:
-      defensive_side_auton_1(); //This is the default auton, if you don't select from the brain.
+      offensive_side_auton_1(); //This is the default auton, if you don't select from the brain.
       break;        //Change these to be your own auton functions in order to use the auton selector.
     case 1:         //Tap the screen to cycle through autons.
       defensive_side_auton_1();
@@ -171,16 +168,7 @@ void autonomous(void) {
       offensive_side_auton_1();
       break;
     case 4:
-      full_test();
-      break;
-    case 5:
-      odom_test();
-      break;
-    case 6:
-      tank_odom_test();
-      break;
-    case 7:
-      holonomic_odom_test();
+      offensive_side_auton_2();
       break;
  }
 }
@@ -203,8 +191,9 @@ void usercontrol(void) {
   R2.setVelocity(600, rpm);
   R3.setVelocity(600, rpm);
   Intake.setVelocity(200, rpm);
+  Intake.setStopping(hold);
   Hang.setVelocity(100, percent);
-
+  Hang.setStopping(hold);
   // User control code here, inside the loop
   while (1) {
     // This is the main execution loop for the user control program.
@@ -225,16 +214,40 @@ void usercontrol(void) {
   }
 }
 
-void onR1Pressed() {
-  Intake.spin(forward);
+void onL2Pressed() {
+  if (front_wings_open == 0.0) {
+    FrontWings.set(true);
+    front_wings_open = front_wings_open + 1.0;
+  }
+  else {
+    FrontWings.set(false);
+    front_wings_open = front_wings_open - 1.0;
+  }
 }
 
-void onR2Pressed() {
-  Intake.spin(reverse);
+void onL1Pressed() {
+  if (back_wings_open == 0.0) {
+    BackLeft.set(true);
+    BackRight.set(true);
+    back_wings_open = back_wings_open + 1.0;
+  }
+  else {
+    BackLeft.set(false);
+    BackRight.set(false);
+    back_wings_open = back_wings_open - 1.0;
+  }
 }
 
 void onUpPressed() {
-  Intake.stop();
+  Ratchet.set(true);
+}
+
+void onLeftPressed() {
+  PTO.set(true);
+}
+
+void onRightPressed() {
+  PTO.set(false);
 }
 
 //
@@ -244,9 +257,12 @@ int main() {
   // Set up callbacks for autonomous and driver control periods.
   Competition.autonomous(autonomous);
   Competition.drivercontrol(usercontrol);
-  Controller1.ButtonR1.pressed(onR1Pressed);
-  Controller1.ButtonR2.pressed(onR2Pressed);
+  Controller1.ButtonL2.pressed(onL2Pressed);
+  Controller1.ButtonL1.pressed(onL1Pressed);
+  Controller1.ButtonLeft.pressed(onLeftPressed);
+  Controller1.ButtonRight.pressed(onRightPressed);
   Controller1.ButtonUp.pressed(onUpPressed);
+  
   // Run the pre-autonomous function.
   pre_auton();
 
@@ -255,3 +271,5 @@ int main() {
     wait(100, msec);
   }
 }
+
+
